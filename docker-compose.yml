@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: instantdeploy-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: instantdeploy
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d instantdeploy"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: instantdeploy-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/instantdeploy?schema=public
+      - AUTH_SECRET=dev-secret-key-at-least-32-characters-long
+      - NEXTAUTH_URL=http://localhost:3000
+      - GOOGLE_CLIENT_ID=mock-google-client-id
+      - GOOGLE_CLIENT_SECRET=mock-google-client-secret
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
